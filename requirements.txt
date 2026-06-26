@@ -1,0 +1,3 @@
+mcp>=1.10.0
+yfinance>=0.2.40
+uvicorn>=0.30.0
