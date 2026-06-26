@@ -92,6 +92,26 @@ def get_option_chain(symbol: str, expiration: str, strike_limit: int = 40) -> di
 # ASGI app for uvicorn (Render/Railway/Fly all expect to run an ASGI app on $PORT)
 app = mcp.streamable_http_app()
 
+
+# Simple health-check page at the root address, so you can confirm the server
+# itself is alive just by visiting it in a browser. The actual tool endpoint
+# that Claude connects to is at /mcp, not /.
+async def _health(scope, receive, send):
+    body = b"Stock data MCP server is running. The tool endpoint is at /mcp."
+    await send({"type": "http.response.start", "status": 200,
+                "headers": [(b"content-type", b"text/plain")]})
+    await send({"type": "http.response.body", "body": body})
+
+
+_original_app = app
+
+
+async def app(scope, receive, send):  # noqa: F811 (intentional wrap)
+    if scope["type"] == "http" and scope["path"] == "/":
+        await _health(scope, receive, send)
+    else:
+        await _original_app(scope, receive, send)
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
